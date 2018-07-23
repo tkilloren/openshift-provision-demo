@@ -1,0 +1,25 @@
+---
+- name: Create terraform {{ terraform_template }} directory
+  file:
+    path: "{{ terraform_dir }}/{{ terraform_template }}/.terraform"
+    state: directory
+  changed_when: false
+
+- name: Create symbolic like for terraform plugins for {{ terraform_template }}
+  file:
+    path: "{{ terraform_dir }}/{{ terraform_template }}/.terraform/plugins"
+    src: ../../.terraform-plugins
+    state: link
+  changed_when: false
+
+- name: Process terraform {{ terraform_template }} template
+  template:
+    src: "{{ terraform_template }}.tf.j2"
+    dest: "{{ terraform_dir }}/{{ terraform_template }}/main.tf"
+  changed_when: false
+
+- name: Run terraform init for {{ terraform_template }}
+  command: terraform init
+  args:
+    chdir: "{{ terraform_dir }}/{{ terraform_template }}"
+  changed_when: false

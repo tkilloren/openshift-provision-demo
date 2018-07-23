@@ -1,0 +1,75 @@
+terraform {
+  backend "gcs" {
+    bucket  = "{{ openshift_gcp_prefix }}terraform-state"
+    prefix  = "cluster-core"
+  }
+}
+
+provider "google" {
+  project = "{{ openshift_gcp_project }}"
+  region = "{{ openshift_gcp_region }}"
+}
+
+resource "google_service_account" "{{ openshift_gcp_master_service_account }}" {
+  account_id = "{{ openshift_gcp_master_service_account }}"
+  display_name = "{{ cluster_name }} master"
+}
+
+resource "google_service_account" "{{ openshift_gcp_node_service_account }}" {
+  account_id = "{{ openshift_gcp_node_service_account }}"
+  display_name = "{{ cluster_name }} node"
+}
+
+resource "google_project_iam_member" "{{ openshift_gcp_master_service_account }}-compute-admin" {
+  role = "roles/compute.admin"
+  member = "serviceAccount:${google_service_account.{{ openshift_gcp_master_service_account }}.email}"
+}
+
+resource "google_project_iam_member" "{{ openshift_gcp_node_service_account }}-compute-viewer" {
+  role = "roles/compute.viewer"
+  member = "serviceAccount:${google_service_account.{{ openshift_gcp_node_service_account }}.email}"
+}
+
+resource "google_compute_network" "{{ openshift_gcp_network_name }}" {
+  name = "{{ openshift_gcp_network_name }}"
+  auto_create_subnetworks = false
+}
+
+resource "google_compute_subnetwork" "{{ openshift_gcp_subnetwork_name }}" {
+  name = "{{ openshift_gcp_subnetwork_name }}"
+  ip_cidr_range = "{{ openshift_gcp_subnetwork_ip_cidr_range | default('10.0.0.0/24') }}"
+  network = "${google_compute_network.{{ openshift_gcp_network_name }}.self_link}"
+}
+
+resource "google_compute_firewall" "{{ openshift_gcp_prefix }}node-ssh" {
+  name = "{{ openshift_gcp_prefix }}node-ssh"
+  network = "${google_compute_network.{{ openshift_gcp_network_name }}.name}"
+
+  allow {
+    protocol = "tcp"
+    ports = ["22"]
+  }
+  source_ranges = ["{{ management_source_ip }}/32"]
+  target_tags = ["{{ openshift_gcp_prefix }}ocp"]
+}
+
+resource "google_compute_health_check" "{{ openshift_gcp_prefix }}router" {
+  name = "{{ openshift_gcp_prefix }}router"
+  timeout_sec = 10
+  check_interval_sec = 10
+
+  http_health_check {
+    port = "1936"
+    request_path = "/healthz"
+  }
+}
+
+resource "google_dns_managed_zone" "{{ cluster_name }}" {
+  name        = "{{ cluster_name }}"
+  dns_name    = "{{ openshift_provision_cluster_domain }}."
+  description = "{{ cluster_name }} managed by terraform"
+}
+
+output "cloud_dns_servers" {
+  value = "${google_dns_managed_zone.{{ cluster_name }}.name_servers}"
+}

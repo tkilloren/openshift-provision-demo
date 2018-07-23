@@ -1,0 +1,15 @@
+---
+- include_tasks: terraform-plugins-dir.yml
+
+- include_tasks: terraform-state-bucket.yml
+
+- include_tasks: terraform-setup.yml
+  with_items:
+  - cluster-core
+  - masters
+  - tmp-node
+  loop_control:
+    loop_var: terraform_template
+
+- include_tasks: terraform-{{ openshift_provision_action }}.yml
+  when: openshift_provision_action is defined

@@ -1,0 +1,71 @@
+{% set t_gcp_zone = openshift_gcp_zones[0] %}
+
+terraform {
+  backend "gcs" {
+    bucket  = "{{ openshift_gcp_prefix }}terraform-state"
+    prefix  = "tmp-node"
+  }
+}
+
+provider "google" {
+  project = "{{ openshift_gcp_project }}"
+  region = "{{ openshift_gcp_region }}"
+}
+
+data "google_service_account" "{{ openshift_gcp_node_service_account }}" {
+  account_id = "{{ openshift_gcp_node_service_account }}"
+}
+
+data "google_compute_subnetwork" "{{ openshift_gcp_subnetwork_name }}" {
+  name = "{{ openshift_gcp_subnetwork_name }}"
+}
+
+resource "google_compute_disk" "{{ openshift_gcp_prefix }}tmp-docker-vg" {
+  name = "{{ openshift_gcp_prefix }}tmp-docker-vg"
+  type = "{{ provision_node_docker_vg_disk_type | default('pd-standard') }}"
+  size = "{{ provision_node_docker_vg_disk_size | default(20) }}"
+  zone = "{{ t_gcp_zone }}"
+}
+
+resource "google_compute_instance" "{{ openshift_gcp_prefix }}tmp" {
+  name = "{{ openshift_gcp_prefix }}tmp"
+  machine_type = "{{ provision_node_machine_type | default('n1-standard-1') }}"
+  zone = "{{ t_gcp_zone }}"
+
+  tags = ["{{ openshift_gcp_prefix }}ocp", "{{ openshift_gcp_prefix }}node"]
+
+  boot_disk {
+    initialize_params {
+      image = "{{ provison_master_boot_disk_image | default('centos-7') }}"
+      size = "{{ provison_master_boot_disk_size | default(100) }}"
+    }
+  }
+
+  attached_disk {
+    source = "${google_compute_disk.{{ openshift_gcp_prefix }}tmp-docker-vg.self_link}"
+    device_name = "docker-vg"
+  }
+
+  network_interface {
+    subnetwork = "${data.google_compute_subnetwork.{{ openshift_gcp_subnetwork_name }}.self_link}"
+    access_config {
+      // Ephemeral IP
+    }
+  }
+
+  labels = {
+    openshift-cluster = "{{ cluster_name }}"
+    openshift-node-group-name = "tmp"
+  }
+
+  metadata {
+    ansible-host-group-nodes = "true"
+    ansible-host-group-tmp = "true"
+    ansible-var-openshift_schedulable = "false"
+  }
+
+  service_account {
+    email = "${data.google_service_account.{{ openshift_gcp_node_service_account }}.email}"
+    scopes = ["cloud-platform"]
+  }
+}

@@ -1,0 +1,10 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: Set openshift_provision_action to bootstrap
+    set_fact:
+      openshift_provision_action: destroy
+
+- import_playbook: terraform.yml

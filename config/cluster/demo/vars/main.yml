@@ -1,0 +1,4 @@
+---
+cluster_name: demo
+cloud_provider: gcp
+cloud_region: gcp-us-central1

@@ -1,0 +1,6 @@
+---
+openshift_gcp_network_name: "{{ cluster_name }}"
+openshift_gcp_subnetwork_name: "{{ cluster_name }}"
+openshift_gcp_master_service_account: "{{ openshift_gcp_prefix }}master"
+openshift_gcp_node_service_account: "{{ openshift_gcp_prefix }}node"
+openshift_provision_master_count: 1

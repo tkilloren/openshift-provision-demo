@@ -1,0 +1,9 @@
+---
+- name: Run terraform destroy
+  command: terraform destroy -auto-approve
+  args:
+    chdir: terraform/{{ item }}
+  with_items:
+  - tmp-node
+  - masters
+  - cluster-core

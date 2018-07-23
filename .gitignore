@@ -1,0 +1,8 @@
+.*
+*.env
+*.json
+*.pyc
+*.retry
+env/
+terraform/
+tls/

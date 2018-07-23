@@ -1,0 +1,9 @@
+---
+- name: Prepare Nodes for openshift-ansible
+  hosts: nodes
+  vars:
+    terraform_dir: "{{ playbook_dir }}/terraform"
+  pre_tasks:
+  - import_tasks: load-config.yml
+  roles:
+  - role: node-prep

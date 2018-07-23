@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: Set openshift_provision_action to bootstrap
+    set_fact:
+      openshift_provision_action: bootstrap
+
+- import_playbook: terraform.yml
+
+- name: Wait for instances
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+  - name: Wait for all instances to be running
+    command: ./{{ cloud_provider }}-hosts.py --wait 300
+    changed_when: false
+
+  - name: Refresh inventory
+    meta: refresh_inventory
+
+- import_playbook: node-prep.yml
